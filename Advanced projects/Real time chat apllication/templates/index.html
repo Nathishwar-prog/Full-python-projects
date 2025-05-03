@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-Time Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>Real-Time Chat</h1>
+        <div id="chat-messages"></div>
+        <div class="input-area">
+            <input type="text" id="username-input" placeholder="Enter your username">
+            <input type="text" id="message-input" placeholder="Type your message">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        // DOM elements
+        const messageInput = document.getElementById('message-input');
+        const usernameInput = document.getElementById('username-input');
+        const sendButton = document.getElementById('send-button');
+        const chatMessages = document.getElementById('chat-messages');
+
+        let username = '';
+
+        // Set username
+        usernameInput.addEventListener('change', (e) => {
+            username = e.target.value.trim();
+            if (username) {
+                socket.emit('new_user', username);
+                messageInput.focus();
+            }
+        });
+
+        // Send message
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message && username) {
+                socket.emit('new_message', message);
+                messageInput.value = '';
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Receive messages
+        socket.on('chat_message', (data) => {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message';
+            messageElement.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // User joined notification
+        socket.on('user_joined', (data) => {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = `${data.username} joined the chat`;
+            chatMessages.appendChild(notification);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // User left notification
+        socket.on('user_left', (data) => {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = `${data.username} left the chat`;
+            chatMessages.appendChild(notification);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+    </script>
+</body>
+</html>
