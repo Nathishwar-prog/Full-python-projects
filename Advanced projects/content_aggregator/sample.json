@@ -1,0 +1,63 @@
+
+
+{
+  "rss": {
+    "feeds": [
+      {
+        "name": "BBC News",
+        "url": "http://feeds.bbci.co.uk/news/rss.xml",
+        "max_items": 10
+      },
+      {
+        "name": "CNN",
+        "url": "http://rss.cnn.com/rss/edition.rss",
+        "max_items": 10
+      },
+      {
+        "name": "Tech Crunch",
+        "url": "https://techcrunch.com/feed/",
+        "max_items": 10
+      }
+    ]
+  },
+  "news": {
+    "newsapi": {
+      "api_key": "your_newsapi_key_here",
+      "categories": ["technology", "business", "science"],
+      "language": "en",
+      "max_items": 10
+    }
+  },
+  "reddit": {
+    "subreddits": [
+      {
+        "name": "news",
+        "category": "hot",
+        "max_items": 10
+      },
+      {
+        "name": "technology",
+        "category": "hot",
+        "max_items": 10
+      },
+      {
+        "name": "programming",
+        "category": "hot",
+        "max_items": 10
+      }
+    ]
+  },
+  "twitter": {
+    "bearer_token": "your_twitter_bearer_token_here",
+    "searches": [
+      {
+        "query": "python programming",
+        "max_items": 10
+      },
+      {
+        "query": "data science",
+        "max_items": 10
+      }
+    ]
+  }
+}

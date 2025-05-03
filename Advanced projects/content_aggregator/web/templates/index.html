@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Aggregator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0;
+            color: #333;
+        }
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .filters select, .filters input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .filters button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .content-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .content-item {
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .content-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .content-item h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .content-item p {
+            color: #666;
+        }
+        .content-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        .pagination button {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pagination button:disabled {
+            background-color: #f5f5f5;
+            color: #bbb;
+            cursor: not-allowed;
+        }
+        .pagination button.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Content Aggregator</h1>
+            <div>
+                <span id="total-items">0</span> items found
+            </div>
+        </header>
+        
+        <div class="filters">
+            <select id="source-filter">
+                <option value="">All Sources</option>
+                <!-- Sources will be populated by JavaScript -->
+            </select>
+            
+            <input type="text" id="keyword-filter" placeholder="Filter by keyword...">
+            
+            <button id="apply-filters">Apply Filters</button>
+        </div>
+        
+        <div id="content-container" class="content-list">
+            <!-- Content will be populated by JavaScript -->
+            <div class="loading">Loading content...</div>
+        </div>
+        
+        <div class="pagination" id="pagination">
+            <!-- Pagination will be populated by JavaScript -->
+        </div>
+    </div>
+    
+    <script>
+        // State variables
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentSourceType = '';
+        let currentKeyword = '';
+        
+        // DOM elements
+        const contentContainer = document.getElementById('content-container');
+        const sourceFilter = document.getElementById('source-filter');
+        const keywordFilter = document.getElementById('keyword-filter');
+        const applyFiltersBtn = document.getElementById('apply-filters');
+        const totalItemsEl = document.getElementById('total-items');
+        const paginationContainer = document.getElementById('pagination');
+        
+        // Load source types for filter dropdown
+        async function loadSourceTypes() {
+            try {
+                const response = await fetch('/api/sources');
+                const sourceTypes = await response.json();
+                
+                sourceTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+                    sourceFilter.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading source types:', error);
+            }
+        }
+        
+        // Load content with current filters and pagination
+        async function loadContent() {
+            contentContainer.innerHTML = '<div class="loading">Loading content...</div>';
+            
+            try {
+                const url = new URL('/api/content', window.location.origin);
+                url.searchParams.append('page', currentPage);
+                url.searchParams.append('per_page', 12);
+                
+                if (currentSourceType) {
+                    url.searchParams.append('source_type', currentSourceType);
+                }
+                
+                if (currentKeyword) {
+                    url.searchParams.append('keyword', currentKeyword);
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                displayContent(data.content);
+                updatePagination(data.page, data.total_pages, data.total);
+                
+                totalPages = data.total_pages;
+                totalItemsEl.textContent = data.total;
+            } catch (error) {
+                console.error('Error loading content:', error);
+                contentContainer.innerHTML = '<div class="loading">Error loading content</div>';
+            }
+        }
+        
+        // Display content in the UI
+        function displayContent(content) {
+            if (content.length === 0) {
+                contentContainer.innerHTML = '<div class="loading">No content found</div>';
+                return;
+            }
+            
+            contentContainer.innerHTML = '';
+            
+            content.forEach(item => {
+                const date = new Date(item.published_at);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                
+                const contentItem = document.createElement('div');
+                contentItem.className = 'content-item';
+                contentItem.innerHTML = `
+                    <h3>
+                        <a href="${item.url}" target="_blank">${item.title}</a>
+                    </h3>
+                    <p>${item.description || 'No description available'}</p>
+                    <div class="content-meta">
+                        <span>${item.source}</span>
+                        <span>${formattedDate}</span>
+                    </div>
+                `;
+                
+                contentContainer.appendChild(contentItem);
+            });
+        }
+        
+        // Update pagination controls
+        function updatePagination(currentPage, totalPages, totalItems) {
+            paginationContainer.innerHTML = '';
+            
+            if (totalPages <= 1) {
+                return;
+            }
+            
+            // Previous button
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = '&laquo; Previous';
+            prevButton.disabled = currentPage === 1;
+            prevButton.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadContent();
+                }
+            });
+            paginationContainer.appendChild(prevButton);
+            
+            // Page numbers
+            const maxButtons = 5;
+            const startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            const endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = i === currentPage ? 'active' : '';
+                pageButton.addEventListener('click', () => {
+                    currentPage = i;
+                    loadContent();
+                });
+                paginationContainer.appendChild(pageButton);
+            }
+            
+            // Next button
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = 'Next &raquo;';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadContent();
+                }
+            });
+            paginationContainer.appendChild(nextButton);
+        }
+        
+        // Event listeners
+        applyFiltersBtn.addEventListener('click', () => {
+            currentSourceType = sourceFilter.value;
+            currentKeyword = keywordFilter.value.trim();
+            currentPage = 1;
+            loadContent();
+        });
+        
+        keywordFilter.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                applyFiltersBtn.click();
+            }
+        });
+        
+        // Initial load
+        loadSourceTypes();
+        loadContent();
+    </script>
+</body>
+</html>
