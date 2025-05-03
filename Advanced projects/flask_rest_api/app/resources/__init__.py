@@ -1,0 +1,1 @@
+# Import resources to register them with Flask
